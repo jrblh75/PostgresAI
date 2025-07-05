@@ -15,7 +15,6 @@
 | Ollama API | 11434 | `http://localhost:11434` | LLM API server |
 | Nginx Proxy | 80 | `http://localhost` | Unified service access (reverse proxy for all web UIs) |
 | PostgreSQL | 65432 | `localhost:65432` | Database connection |
-| PostgreSQL | 65432 | `localhost:65432` | Database connection |
 
 ### 2. Tailscale Network Access (Remote Access)
 
