@@ -47,6 +47,7 @@ def health_check():
 
 @app.route('/embed', methods=['POST'])
 def embed_text():
+    global model, tokenizer
     try:
         data = request.get_json()
         text = data.get('text', '')
@@ -54,8 +55,13 @@ def embed_text():
         if not text:
             return jsonify({'error': 'No text provided'}), 400
         
+        # Load model on first use if not already loaded
         if model is None or tokenizer is None:
-            return jsonify({'error': 'Model not loaded'}), 500
+            logger.info("Loading model on demand...")
+            load_model()
+        
+        if model is None or tokenizer is None:
+            return jsonify({'error': 'Failed to load model'}), 500
         
         # Tokenize and encode
         inputs = tokenizer(text, return_tensors='pt', truncation=True, padding=True)
@@ -76,6 +82,7 @@ def embed_text():
 
 @app.route('/similarity', methods=['POST'])
 def compute_similarity():
+    global model, tokenizer
     try:
         data = request.get_json()
         text1 = data.get('text1', '')
@@ -84,8 +91,13 @@ def compute_similarity():
         if not text1 or not text2:
             return jsonify({'error': 'Both text1 and text2 are required'}), 400
         
+        # Load model on first use if not already loaded
         if model is None or tokenizer is None:
-            return jsonify({'error': 'Model not loaded'}), 500
+            logger.info("Loading model on demand...")
+            load_model()
+        
+        if model is None or tokenizer is None:
+            return jsonify({'error': 'Failed to load model'}), 500
         
         # Encode both texts
         inputs1 = tokenizer(text1, return_tensors='pt', truncation=True, padding=True)
