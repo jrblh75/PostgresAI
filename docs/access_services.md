@@ -13,7 +13,8 @@
 | DBeaver CloudBeaver | 8978 | `http://localhost:8978` | Cloud database interface |
 | TinyBERT API | 8083 | `http://localhost:8083` | Transformer API |
 | Ollama API | 11434 | `http://localhost:11434` | LLM API server |
-| Nginx Proxy | 80 | `http://localhost` | Unified service access |
+| Nginx Proxy | 80 | `http://localhost` | Unified service access (reverse proxy for all web UIs) |
+| PostgreSQL | 65432 | `localhost:65432` | Database connection |
 | PostgreSQL | 65432 | `localhost:65432` | Database connection |
 
 ### 2. Tailscale Network Access (Remote Access)
@@ -41,7 +42,17 @@ Access multiple services through the nginx proxy:
 | `/tinybert/` | TinyBERT | `http://localhost/tinybert/` | `http://YOUR_TAILSCALE_IP/tinybert/` |
 | `/ollama/` | Ollama API | `http://localhost/ollama/` | `http://YOUR_TAILSCALE_IP/ollama/` |
 
-## Service-Specific Access Instructions
+
+## Service-Specific Access Instructions & Recent Improvements
+
+### Recent Changes & Improvements (July 2025)
+
+- **Ollama Service:** Fixed Docker Compose error by removing invalid `command: /startup.sh` from the `ollama` service. Ollama now starts with its default entrypoint.
+- **Service Health:** All containers are now healthy and accessible. If a service is restarting, check logs for configuration or port issues.
+- **nginx Proxy:** Confirmed nginx is running and mapped to port 80, providing unified access to all web UIs.
+- **Documentation:** All ports, endpoints, and troubleshooting steps are up to date. Table now includes PostgreSQL direct connection info.
+- **Directory Sync:** Project directories and documentation are unified and synced between Desktop and NAS. All changes are pushed to GitHub.
+- **General:** See Troubleshooting section for common fixes (port conflicts, environment variables, volume permissions).
 
 ### Finding Your Tailscale IP
 
@@ -94,10 +105,11 @@ ifconfig | grep "inet 100\." | awk '{print $2}'
 ### Ollama API
 1. Base URL: `http://localhost:11434` or `https://ollama.localhost`
 2. API endpoints:
-   - `GET /api/tags` - List models
+   - `GET /api/tags` - List models (verify Ollama is running: should return available models)
    - `POST /api/generate` - Generate text
    - `POST /api/chat` - Chat completion
    - `POST /api/pull` - Pull new models
+3. **Note:** If Ollama fails to start, check your `docker-compose.yml` for any invalid `command:` lines and remove them.
 
 ## Tailscale External Access
 
@@ -184,10 +196,14 @@ await client.connect();
 4. **Network Access**: Limit external access as needed
 5. **API Keys**: Use API keys for production environments
 
-## Troubleshooting Access Issues
 
-1. **Service not responding**: Check if containers are running
-2. **Connection refused**: Verify port mappings
-3. **SSL errors**: Check certificate configuration
-4. **Authentication failed**: Verify credentials in `.env`
-5. **Network issues**: Check Docker network configuration
+## Troubleshooting Access Issues & Common Fixes
+
+1. **Service not responding**: Check if containers are running (`docker compose ps`).
+2. **Connection refused**: Verify port mappings in `docker-compose.yml` and ensure no port conflicts.
+3. **Ollama restarting**: Remove any `command:` line from the `ollama` service in `docker-compose.yml`.
+4. **pgAdmin restarting**: Check logs for port conflicts, missing environment variables, or volume permission issues.
+5. **SSL errors**: Check certificate configuration.
+6. **Authentication failed**: Verify credentials in `.env`.
+7. **Network issues**: Check Docker network configuration and firewall settings.
+8. **Directory sync issues**: Use `rsync` to keep Desktop and NAS project directories unified.
