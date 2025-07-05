@@ -18,7 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY app/ ./app/
-COPY model_loader.py .
 
 # Create models directory
 RUN mkdir -p /app/models
