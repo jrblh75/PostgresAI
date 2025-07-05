@@ -1,24 +1,57 @@
 # Service Access Guide
 
-## Default Access Points
+**Updated:** July 4, 2025 - Added Tailscale Integration
 
-### Web Services
+## Access Methods
 
-| Service | HTTP Port | HTTPS Port | Default URL | HTTPS URL |
-|---------|-----------|------------|-------------|-----------|
-| pgAdmin | 5051 | 443 | `http://localhost:5051` | `https://pgadmin.localhost` |
-| OpenWebUI | 8081 | 443 | `http://localhost:8081` | `https://webui.localhost` |
-| DBeaver CloudBeaver | 8978 | N/A | `http://localhost:8978` | N/A |
-| TinyBERT API | 8083 | 443 | `http://localhost:8083` | `https://tinybert.localhost` |
-| Ollama API | 11434 | 443 | `http://localhost:11434` | `https://ollama.localhost` |
+### 1. Local Network Access (Same Machine)
 
-### Database Services
+| Service | Port | URL | Purpose |
+|---------|------|-----|---------|
+| pgAdmin | 5051 | `http://localhost:5051` | Web database admin |
+| OpenWebUI | 8081 | `http://localhost:8081` | AI chat interface |
+| DBeaver CloudBeaver | 8978 | `http://localhost:8978` | Cloud database interface |
+| TinyBERT API | 8083 | `http://localhost:8083` | Transformer API |
+| Ollama API | 11434 | `http://localhost:11434` | LLM API server |
+| Nginx Proxy | 80 | `http://localhost` | Unified service access |
+| PostgreSQL | 65432 | `localhost:65432` | Database connection |
 
-| Service | Port | Connection String |
-|---------|------|-------------------|
-| PostgreSQL | 65432 | `postgresql://postgres_admin:password@localhost:65432/postgres_ai` |
+### 2. Tailscale Network Access (Remote Access)
+
+Replace `YOUR_TAILSCALE_IP` with your actual Tailscale IP (check with `./check_tailscale.sh`):
+
+| Service | Port | URL | Purpose |
+|---------|------|-----|---------|
+| pgAdmin | 5051 | `http://YOUR_TAILSCALE_IP:5051` | Web database admin |
+| OpenWebUI | 8081 | `http://YOUR_TAILSCALE_IP:8081` | AI chat interface |
+| DBeaver CloudBeaver | 8978 | `http://YOUR_TAILSCALE_IP:8978` | Cloud database interface |
+| TinyBERT API | 8083 | `http://YOUR_TAILSCALE_IP:8083` | Transformer API |
+| Ollama API | 11434 | `http://YOUR_TAILSCALE_IP:11434` | LLM API server |
+| Nginx Proxy | 80 | `http://YOUR_TAILSCALE_IP` | Unified service access |
+| PostgreSQL | 65432 | `YOUR_TAILSCALE_IP:65432` | Database connection |
+
+### 3. Nginx Proxy Routes
+
+Access multiple services through the nginx proxy:
+
+| Route | Target Service | URL (Local) | URL (Tailscale) |
+|-------|---------------|-------------|-----------------|
+| `/pgadmin/` | pgAdmin | `http://localhost/pgadmin/` | `http://YOUR_TAILSCALE_IP/pgadmin/` |
+| `/webui/` | OpenWebUI | `http://localhost/webui/` | `http://YOUR_TAILSCALE_IP/webui/` |
+| `/tinybert/` | TinyBERT | `http://localhost/tinybert/` | `http://YOUR_TAILSCALE_IP/tinybert/` |
+| `/ollama/` | Ollama API | `http://localhost/ollama/` | `http://YOUR_TAILSCALE_IP/ollama/` |
 
 ## Service-Specific Access Instructions
+
+### Finding Your Tailscale IP
+
+```bash
+# Run the status check script
+./check_tailscale.sh
+
+# Or check manually
+ifconfig | grep "inet 100\." | awk '{print $2}'
+```
 
 ### pgAdmin
 1. Open: `http://localhost:5051` or `https://pgadmin.localhost`

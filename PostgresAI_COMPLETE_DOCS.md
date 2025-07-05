@@ -1,20 +1,24 @@
 # PostgresAI Docker Container System - Complete Documentation
 
 **Created:** July 4, 2025  
-**Version:** 1.0  
-**Repository:** https://github.com/jrblh75/PostgresAI
+**Updated:** July 4, 2025 - Tailscale Integration & NAS Deployment  
+**Version:** 2.0  
+**Repository:** https://github.com/jrblh75/PostgresAI  
+**Deployment Location:** `/Volumes/NASté-DockerHD/|Projects (Holding)/GitHub/Active Repos/PostgresAI`
 
 ## Table of Contents
 1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Services Configuration](#services-configuration)
-4. [Network & Security](#network--security)
-5. [Installation & Setup](#installation--setup)
-6. [Service Access](#service-access)
-7. [Environment Configuration](#environment-configuration)
-8. [Volume Management](#volume-management)
-9. [Troubleshooting](#troubleshooting)
-10. [Backup & Recovery](#backup--recovery)
+2. [Tailscale Integration](#tailscale-integration)
+3. [Architecture](#architecture)
+4. [Services Configuration](#services-configuration)
+5. [Network & Security](#network--security)
+6. [Installation & Setup](#installation--setup)
+7. [Service Access](#service-access)
+8. [Environment Configuration](#environment-configuration)
+9. [Volume Management](#volume-management)
+10. [Management Scripts](#management-scripts)
+11. [Troubleshooting](#troubleshooting)
+12. [Backup & Recovery](#backup--recovery)
 
 ---
 
@@ -24,16 +28,52 @@ PostgresAI is a comprehensive Docker-based AI and database platform that combine
 - **Database Services**: PostgreSQL with pgAdmin and DBeaver interfaces
 - **AI Services**: Ollama LLM server with OpenWebUI interface
 - **ML Services**: TinyBERT transformer service
-- **Infrastructure**: Nginx reverse proxy with SSL and Tailscale VPN
+- **Infrastructure**: Nginx reverse proxy with Tailscale VPN integration
+- **Remote Access**: Secure connectivity via Tailscale from any device
 
 ### Key Features
-- 🔒 **SSL/HTTPS** support via Nginx reverse proxy
-- 🖥️ **GPU Support** for AI models (NVIDIA)
-- 🌐 **VPN Access** through Tailscale
-- 📊 **Multiple DB Interfaces** (pgAdmin, DBeaver)
-- 🤖 **AI Chat Interface** with OpenWebUI
-- 🔄 **Auto-restart** policies for high availability
-- 🏠 **Network Isolation** with custom bridge network
+- � **Tailscale VPN Integration** - Secure remote access from any device on your Tailnet
+- �️ **PostgreSQL Database** - Primary database with custom extensions and initialization
+- 🤖 **AI Services** - Ollama LLMs with OpenWebUI chat interface
+- 🧠 **ML Transformers** - TinyBERT service for text processing
+- 📊 **Multiple DB Interfaces** - pgAdmin web UI and DBeaver cloud interface
+- 🔄 **Auto-restart Policies** - Production-ready with health checks
+- 🏠 **Network Isolation** - Secure Docker bridge network (172.20.0.0/16)
+- 📡 **HTTP Proxy** - Nginx for unified service access
+- 💾 **NAS Deployment** - Optimized for network storage with persistence
+
+---
+
+## Tailscale Integration
+
+### Overview
+This deployment integrates with Tailscale to provide secure remote access to all services from any device on your Tailnet.
+
+### Architecture
+- **Tailscale Desktop**: Running on host system
+- **Container Integration**: Tailscale container with host networking
+- **Route Advertisement**: Docker subnet (172.20.0.0/16) advertised to Tailnet
+- **Access Method**: All services accessible via your Tailscale IP
+
+### Configuration
+```yaml
+tailscale:
+  image: tailscale/tailscale:latest
+  network_mode: host
+  environment:
+    - TS_AUTHKEY=${TS_AUTHKEY}
+    - TS_EXTRA_ARGS=--advertise-routes=172.20.0.0/16 --accept-routes
+  cap_add:
+    - NET_ADMIN
+    - NET_RAW
+  privileged: true
+```
+
+### Benefits
+- **Universal Access**: Access from phones, tablets, laptops anywhere
+- **No Port Forwarding**: No need to expose services to public internet
+- **Secure by Default**: All traffic encrypted and authenticated
+- **Zero Configuration**: Works with existing Tailscale setup
 
 ---
 
