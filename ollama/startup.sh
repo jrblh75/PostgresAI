@@ -1,25 +1,18 @@
 #!/bin/bash
 
-# Start Ollama in background
+echo "Starting Ollama service..."
+
+# Start the Ollama server in the background
 ollama serve &
+OLLAMA_PID=$!
 
-# Wait for Ollama to be ready
-echo "Waiting for Ollama to start..."
-while ! curl -s http://localhost:11434/api/tags > /dev/null; do
-    sleep 2
-done
+# Wait for Ollama to start up
+echo "Waiting for Ollama server to start..."
+sleep 10
 
-echo "Ollama is ready! Loading models..."
+# Load models
+/app/model_loader.sh
 
-# Pull deepseek model
-echo "Pulling deepseek:latest model..."
-ollama pull deepseek:latest
-
-# Pull llama2 13b quantized model
-echo "Pulling llama2:13b-chat-q4_0 model..."
-ollama pull llama2:13b-chat-q4_0
-
-echo "All models loaded successfully!"
-
-# Keep container running
-wait
+# Keep the container running
+echo "Ollama server is running with PID: $OLLAMA_PID"
+wait $OLLAMA_PID

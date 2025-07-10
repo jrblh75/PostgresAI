@@ -1,20 +1,18 @@
-FROM postgres:15-alpine
+FROM postgres:${POSTGRES_VERSION:-17-alpine}
 
-# Install additional extensions and tools
-RUN apk add --no-cache \
-    postgresql-contrib \
-    curl \
-    wget
+# Set environment variables for PostgreSQL configuration
+ENV POSTGRES_PASSWORD_ENCRYPTION=scram-sha-256
+ENV POSTGRES_INITDB_ARGS="--auth-host=scram-sha-256 --auth-local=scram-sha-256 --encoding=UTF8 --locale=en_US.UTF-8"
 
-# Copy initialization scripts
-COPY init/ /docker-entrypoint-initdb.d/
+# Install necessary packages
+RUN apk add --no-cache tzdata
 
-# Set environment variables
-ENV POSTGRES_INITDB_ARGS="--encoding=UTF-8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8"
+# Copy custom configuration
+COPY postgresql.conf /etc/postgresql/postgresql.conf
 
-# Expose port
-EXPOSE 5432
+# Use custom configuration
+CMD ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+  CMD pg_isready -U ${POSTGRES_USER:-postgres_admin} -d ${POSTGRES_DB:-postgres_ai} || exit 1

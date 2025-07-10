@@ -1,28 +1,17 @@
 FROM ollama/ollama:latest
 
-# Install curl and other dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create model directory
+# Create directories
 RUN mkdir -p /app/models
 
-# Copy model loader script
+# Copy startup scripts
+COPY startup.sh /app/startup.sh
 COPY model_loader.sh /app/model_loader.sh
-RUN chmod +x /app/model_loader.sh
 
-# Set environment variables
-ENV OLLAMA_HOST=0.0.0.0
-ENV OLLAMA_PORT=11434
+# Set execute permissions
+RUN chmod +x /app/startup.sh /app/model_loader.sh
 
-# Expose port
-EXPOSE 11434
+# Set working directory
+WORKDIR /app
 
-# Create startup script
-COPY startup.sh /startup.sh
-RUN chmod +x /startup.sh
-
-# Start ollama and load models
-CMD ["/startup.sh"]
+# Default command
+CMD ["/app/startup.sh"]

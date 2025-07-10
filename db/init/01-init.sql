@@ -1,59 +1,50 @@
--- Initialize PostgresAI Database
--- This script runs when the PostgreSQL container starts
+-- PostgresAI initialization script
+-- Creates necessary extensions, schemas, and initial data
 
--- Create extensions
+-- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE EXTENSION IF NOT EXISTS "hstore";
 
--- Create schema for AI operations
-CREATE SCHEMA IF NOT EXISTS ai_operations;
+-- Create schemas
+CREATE SCHEMA IF NOT EXISTS ai_data;
+CREATE SCHEMA IF NOT EXISTS ai_models;
 
--- Create users table
-CREATE TABLE IF NOT EXISTS ai_operations.users (
+-- Create AI configuration table
+CREATE TABLE IF NOT EXISTS ai_models.model_config (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    username VARCHAR(255) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    model_name VARCHAR(100) NOT NULL UNIQUE,
+    model_type VARCHAR(50) NOT NULL,
+    model_params JSONB NOT NULL DEFAULT '{}',
+    enabled BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create models table
-CREATE TABLE IF NOT EXISTS ai_operations.models (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL,
-    type VARCHAR(100) NOT NULL,
-    version VARCHAR(50),
-    description TEXT,
-    parameters JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Create sample data
+INSERT INTO ai_models.model_config (model_name, model_type, model_params)
+VALUES 
+('default-model', 'text-embedding', '{"dimensions": 768, "context_length": 4096}')
+ON CONFLICT (model_name) DO NOTHING;
 
--- Create conversations table
-CREATE TABLE IF NOT EXISTS ai_operations.conversations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES ai_operations.users(id),
-    model_id UUID REFERENCES ai_operations.models(id),
-    title VARCHAR(500),
-    messages JSONB NOT NULL DEFAULT '[]'::jsonb,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Set up permissions
+GRANT USAGE ON SCHEMA ai_data TO ${POSTGRES_USER:-postgres_admin};
+GRANT USAGE ON SCHEMA ai_models TO ${POSTGRES_USER:-postgres_admin};
+GRANT ALL ON ALL TABLES IN SCHEMA ai_data TO ${POSTGRES_USER:-postgres_admin};
+GRANT ALL ON ALL TABLES IN SCHEMA ai_models TO ${POSTGRES_USER:-postgres_admin};
+GRANT ALL ON ALL SEQUENCES IN SCHEMA ai_data TO ${POSTGRES_USER:-postgres_admin};
+GRANT ALL ON ALL SEQUENCES IN SCHEMA ai_models TO ${POSTGRES_USER:-postgres_admin};
 
--- Insert default models
-INSERT INTO ai_operations.models (name, type, version, description) VALUES
-('deepseek:latest', 'llm', 'latest', 'DeepSeek language model'),
-('llama2:13b-chat-q4_0', 'llm', '13b-q4_0', 'Llama 2 13B chat model quantized'),
-('distilbert-base-uncased', 'transformer', 'base', 'DistilBERT base model uncased')
-ON CONFLICT DO NOTHING;
+-- Create function to update timestamps
+CREATE OR REPLACE FUNCTION update_modified_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE 'plpgsql';
 
--- Create indexes
-CREATE INDEX IF NOT EXISTS idx_users_username ON ai_operations.users(username);
-CREATE INDEX IF NOT EXISTS idx_users_email ON ai_operations.users(email);
-CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON ai_operations.conversations(user_id);
-CREATE INDEX IF NOT EXISTS idx_conversations_created_at ON ai_operations.conversations(created_at);
-
--- Grant permissions
-GRANT ALL PRIVILEGES ON SCHEMA ai_operations TO postgres_admin;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ai_operations TO postgres_admin;
+-- Apply trigger to configuration table
+CREATE TRIGGER update_model_config_timestamp
+BEFORE UPDATE ON ai_models.model_config
+FOR EACH ROW EXECUTE PROCEDURE update_modified_column();

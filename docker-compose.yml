@@ -1,175 +1,61 @@
+version: '3.8'
+
 services:
-  # PostgreSQL Database
   postgres:
-    build: ./db
-    container_name: postgres_ai
-    ports:
-      - "65432:5432"
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+      args:
+        POSTGRES_VERSION: ${POSTGRES_VERSION:-17-alpine}
+    container_name: postgresai_db
     environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres_admin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-secure_password}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres_ai}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - postgres_ai_network
-    restart: unless-stopped
-
-  # pgAdmin
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: pgadmin_ai
+      - ./db/init:/docker-entrypoint-initdb.d
     ports:
-      - "5051:80"
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
-      - PGADMIN_CONFIG_SERVER_MODE=False
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
+      - "5432:5432"
     networks:
-      - postgres_ai_network
+      - postgresai_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres_admin} -d ${POSTGRES_DB:-postgres_ai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: postgresai_nginx
+    ports:
+      - "8443:443"
     depends_on:
       - postgres
-    restart: unless-stopped
-
-  # DBeaver CloudBeaver
-  dbeaver:
-    image: dbeaver/cloudbeaver:latest
-    container_name: dbeaver_ai
-    ports:
-      - "8978:8978"
-    volumes:
-      - dbeaver_data:/opt/cloudbeaver/workspace
     networks:
-      - postgres_ai_network
-    depends_on:
-      - postgres
+      - postgresai_network
     restart: unless-stopped
 
-  # Ollama
   ollama:
-    build: ./ollama
-    container_name: ollama_ai
+    build:
+      context: ./ollama
+      dockerfile: Dockerfile
+    container_name: postgresai_ollama
     ports:
       - "11434:11434"
-    environment:
-      - OLLAMA_HOST=0.0.0.0
     volumes:
       - ollama_data:/root/.ollama
-      - ollama_model_loader_data:/app/models
     networks:
-      - postgres_ai_network
-    # GPU support disabled for compatibility
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
+      - postgresai_network
     restart: unless-stopped
 
-  # OpenWebUI
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: open_webui_ai
-    ports:
-      - "8081:8080"
-    environment:
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
-      - ENABLE_OAUTH=true
-    volumes:
-      - open-webui-data:/app/backend/data
-    networks:
-      - postgres_ai_network
-    depends_on:
-      - ollama
-    restart: unless-stopped
-
-  # TinyBERT Transformers
-  tinybert:
-    build: ./tinybert
-    container_name: tinybert_ai
-    ports:
-      - "8083:8083"
-    environment:
-      - MODEL_NAME=distilbert-base-uncased
-      - FLASK_ENV=${FLASK_ENV}
-    volumes:
-      - tinybert_models:/app/models
-    networks:
-      - postgres_ai_network
-    restart: unless-stopped
-
-  # Tailscale for secure external access (using host network)
-  tailscale:
-    image: tailscale/tailscale:latest
-    container_name: tailscale_ai
-    hostname: postgres-ai-stack
-    network_mode: host
-    environment:
-      - TS_AUTHKEY=${TS_AUTHKEY}
-      - TS_STATE_DIR=/var/lib/tailscale
-      - TS_USERSPACE=false
-      - TS_EXTRA_ARGS=--advertise-routes=172.20.0.0/16 --accept-routes
-      - TS_HOSTNAME=postgres-ai-docker
-    volumes:
-      - tailscale_data:/var/lib/tailscale
-      - /dev/net/tun:/dev/net/tun
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    privileged: true
-    restart: unless-stopped
-
-  # Nginx Proxy (SSL disabled for now)
-  nginx:
-    image: nginx:alpine
-    container_name: nginx_ssl_proxy
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - nginx_logs:/var/log/nginx
-    networks:
-      - postgres_ai_network
-    depends_on:
-      - postgres
-      - pgadmin
-      - open-webui
-      - tinybert
-      - tailscale
-    restart: unless-stopped
+networks:
+  postgresai_network:
+    driver: bridge
 
 volumes:
   postgres_data:
-    driver: local
-  pg_data:
-    driver: local
-  pgadmin_data:
-    driver: local
-  dbeaver_data:
-    driver: local
-  open-webui-data:
-    driver: local
   ollama_data:
-    driver: local
-  ollama_model_loader_data:
-    driver: local
-  ollama_loader:
-    driver: local
-  tinybert_models:
-    driver: local
-  tailscale_data:
-    driver: local
-  nginx_logs:
-    driver: local
-
-networks:
-  postgres_ai_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
